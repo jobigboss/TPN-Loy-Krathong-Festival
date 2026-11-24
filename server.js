@@ -11,8 +11,8 @@ const server=http.createServer(async(req,res)=>{
  if(req.method==='GET'&&url.pathname==='/health'){
   res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'}).end(JSON.stringify({status:'ok'}));return;
  }
- if(req.method==='GET'&&url.pathname==='/music/background.mp3'){
-  const file=path.join(__dirname,'public','music','background.mp3');
+ if(req.method==='GET'&&['/music/background.mp3','/music/fireworks.mp3'].includes(url.pathname)){
+  const file=path.join(__dirname,'public','music',path.basename(url.pathname));
   if(!fs.existsSync(file)){res.writeHead(404).end('Music file not added');return}
   res.writeHead(200,{'Content-Type':'audio/mpeg','Content-Length':fs.statSync(file).size});
   const stream=fs.createReadStream(file);stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy());stream.pipe(res);return;
@@ -32,7 +32,7 @@ const server=http.createServer(async(req,res)=>{
   limits.set(ip,now);floats.push(item);if(floats.length>80)floats.shift();broadcast('float',item);return reply(201,item);
   }catch{return reply(400,{error:'ข้อมูลไม่ถูกต้อง'})}
  }
- if(req.method==='GET'&&['/','/app.js','/config.js','/transport.js','/style.css'].includes(url.pathname)){const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.writeHead(200,{'Content-Type':({'index.html':'text/html','app.js':'text/javascript','config.js':'text/javascript','transport.js':'text/javascript','style.css':'text/css'})[file]+'; charset=utf-8','Content-Security-Policy':"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self' https://*.supabase.co; img-src 'self' data:; media-src 'self' blob:; frame-ancestors 'none'"});return res.end(fs.readFileSync(path.join(__dirname,'public',file)))}
+ if(req.method==='GET'&&['/','/app.js','/config.js','/transport.js','/audio-peaks.js','/style.css'].includes(url.pathname)){const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.writeHead(200,{'Content-Type':({'index.html':'text/html','app.js':'text/javascript','config.js':'text/javascript','transport.js':'text/javascript','audio-peaks.js':'text/javascript','style.css':'text/css'})[file]+'; charset=utf-8','Content-Security-Policy':"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self' https://*.supabase.co; img-src 'self' data:; media-src 'self' blob:; frame-ancestors 'none'"});return res.end(fs.readFileSync(path.join(__dirname,'public',file)))}
  res.writeHead(404).end('Not found');
 });
 setInterval(()=>{for(const c of clients)c.write(': heartbeat\n\n');for(const [ip,t] of limits)if(Date.now()-t>60000)limits.delete(ip)},15000).unref();

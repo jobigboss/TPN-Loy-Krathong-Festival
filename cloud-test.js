@@ -1,5 +1,16 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const source=fs.readFileSync('public/transport.js','utf8');
+const {detectFireworkPeaks}=require('./public/audio-peaks');
+test('firework timing detects attacks and merges closely spaced crackles',()=>{
+ const samples=new Float32Array(2000);
+ samples[200]=1;samples[250]=.4;samples[1000]=.8;samples[1800]=.7;
+ const peaks=detectFireworkPeaks([samples],1000);
+ assert.equal(peaks.length,3);
+ assert.ok(Math.abs(peaks[0].time-.2)<.011);
+ assert.ok(Math.abs(peaks[1].time-1)<.011);
+ assert.ok(Math.abs(peaks[2].time-1.8)<.011);
+ assert.deepEqual(detectFireworkPeaks([new Float32Array(1000)],1000),[]);
+});
 test('cloud transport reads shared wishes and submits through restricted RPC',async()=>{
  const requests=[],snapshots=[],connections=[];
  const context={window:{FESTIVAL_CONFIG:{supabaseUrl:'https://example.supabase.co',supabaseKey:'sb_publishable_example'}},location:{hostname:'example.github.io'},document:{hidden:false},localStorage:{getItem:()=> 'device'},crypto:{randomUUID:()=> 'device'},AbortSignal,clearTimeout(){},setTimeout(){},fetch:async(url,options)=>{requests.push({url,options});return {ok:true,json:async()=>url.includes('/rpc/')?[{id:'new'}]:[{id:'old'}]}}};

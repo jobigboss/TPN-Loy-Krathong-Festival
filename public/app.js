@@ -71,47 +71,57 @@ void startBackgroundMusic();
 
 // A bounded firework show follows each live submission, synchronized with audio.
 const fireworks=[];
-let effectsAudio,effectsEnabled=false;
+let effectsAudio,effectsEnabled=false,effectsBuffer,effectsPeaks=[],effectsSource,effectsLoading;
 const effectsButton=document.createElement('button');
 effectsButton.type='button';effectsButton.className='effects';effectsButton.textContent='เปิดเสียงพลุ';effectsButton.setAttribute('aria-pressed','false');
 $('music').after(effectsButton);
+async function loadFireworkAudio(){
+  if(effectsBuffer)return;
+  if(!effectsLoading)effectsLoading=(async()=>{
+    const response=await fetch('./music/fireworks.mp3');if(!response.ok)throw Error('Audio unavailable');
+    effectsBuffer=await effectsAudio.decodeAudioData(await response.arrayBuffer());
+    effectsPeaks=detectFireworkPeaks(Array.from({length:effectsBuffer.numberOfChannels},(_,i)=>effectsBuffer.getChannelData(i)),effectsBuffer.sampleRate);
+  })().catch(error=>{effectsBuffer=null;effectsLoading=null;throw error});
+  await effectsLoading;
+}
+function stopFireworkAudio(){
+  if(effectsSource){effectsSource.stop();effectsSource=null}
+  fireworks.length=0;
+}
 effectsButton.onclick=async()=>{
+  effectsButton.disabled=true;
   try{
     if(!effectsEnabled){
-      const Audio=window.AudioContext||window.webkitAudioContext;
-      if(!Audio)throw Error('unsupported');
-      effectsAudio??=new Audio();await effectsAudio.resume();
-    }
-    effectsEnabled=!effectsEnabled;
-    effectsButton.textContent=effectsEnabled?'ปิดเสียงพลุ':'เปิดเสียงพลุ';
-    effectsButton.setAttribute('aria-pressed',String(effectsEnabled));
-    if(effectsEnabled)launchFireworks();
-  }catch{$('notice').textContent='เปิดเสียงพลุไม่ได้ กรุณาลองอีกครั้ง'}
+      const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)throw Error('unsupported');
+      effectsAudio??=new Audio();await effectsAudio.resume();await loadFireworkAudio();effectsEnabled=true;
+      effectsButton.textContent='ปิดเสียงพลุ';effectsButton.setAttribute('aria-pressed','true');launchFireworks();
+    }else{effectsEnabled=false;stopFireworkAudio();effectsButton.textContent='เปิดเสียงพลุ';effectsButton.setAttribute('aria-pressed','false')}
+  }catch{$('notice').textContent='เปิดเสียงพลุไม่ได้ กรุณาลองอีกครั้ง'}finally{effectsButton.disabled=false}
 };
-function fireworkSound(burst){
-  if(!effectsEnabled||!effectsAudio||effectsAudio.state!=='running'||document.hidden)return;
-  const audio=effectsAudio,now=audio.currentTime,duration=burst?1.4:.7;
-  const buffer=audio.createBuffer(1,Math.ceil(audio.sampleRate*duration),audio.sampleRate),data=buffer.getChannelData(0);
-  for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,burst?2:1);
-  const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();source.buffer=buffer;
-  filter.type=burst?'lowpass':'bandpass';filter.frequency.setValueAtTime(burst?1600:500,now);
-  filter.frequency.exponentialRampToValueAtTime(burst?100:2200,now+duration);
-  gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(burst?.22:.07,now+.02);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
-  source.connect(filter);filter.connect(gain);gain.connect(audio.destination);source.start();
-  source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect()};
-}
 function launchFireworks(){
-  if(document.hidden||fireworks.length>=6)return;
+  if(document.hidden)return;
+  const palette=['#ffcc76','#ff90c1','#91d8ff','#b6f59a'];
+  if(effectsEnabled&&effectsBuffer&&effectsAudio.state==='running'){
+    if(effectsSource)return; // Keep one synchronized track, even during many submissions.
+    const source=effectsAudio.createBufferSource(),gain=effectsAudio.createGain();
+    source.buffer=effectsBuffer;gain.gain.value=.55;source.connect(gain);gain.connect(effectsAudio.destination);
+    const audioStart=effectsAudio.currentTime+.9;
+    effectsSource=source;fireworks.length=0;
+    for(const [i,peak] of effectsPeaks.entries())fireworks.push({audioStart:audioStart+peak.time-.85,x:.12+Math.random()*.76,y:.1+Math.random()*.17,color:palette[i%palette.length],strength:peak.strength});
+    source.onended=()=>{if(effectsSource===source)effectsSource=null;source.disconnect();gain.disconnect()};source.start(audioStart);
+    return;
+  }
+  if(fireworks.length>=6)return;
   const start=performance.now(),count=Math.min(3,6-fireworks.length);
-  for(let i=0;i<count;i++)fireworks.push({start:start+i*380,x:.15+Math.random()*.7,y:.1+Math.random()*.16,color:['#ffcc76','#ff90c1','#91d8ff'][i],launched:false,burst:false});
+  for(let i=0;i<count;i++)fireworks.push({start:start+i*380,x:.15+Math.random()*.7,y:.1+Math.random()*.16,color:palette[i],strength:.7});
 }
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopFireworkAudio()});
 function drawFireworks(t){
   ctx.save();
   for(let i=fireworks.length-1;i>=0;i--){
-    const firework=fireworks[i],age=(t-firework.start)/1000;
+    const firework=fireworks[i],age=firework.audioStart===undefined?(t-firework.start)/1000:effectsAudio.currentTime-firework.audioStart;
     if(age<0)continue;
     if(age>2.9){fireworks.splice(i,1);continue}
-    if(!firework.launched){firework.launched=true;fireworkSound(false)}
     const x=firework.x*w,y=firework.y*h;
     if(age<.85){
       if(reducedMotion)continue;
@@ -119,8 +129,7 @@ function drawFireworks(t){
       ctx.globalAlpha=1;ellipse(x,rocketY,2,3,'#fff1c8');
       for(let j=1;j<10;j++){ctx.globalAlpha=(1-j/10)*.6;ellipse(x,rocketY+j*4,1.5,2,firework.color)}
     }else{
-      if(!firework.burst){firework.burst=true;fireworkSound(true)}
-      const p=(age-.85)/2.05,radius=Math.min(w,h)*.16*(1-Math.pow(1-p,3));
+      const p=(age-.85)/2.05,radius=Math.min(w,h)*(.1+.09*(firework.strength||.7))*(1-Math.pow(1-p,3));
       ctx.globalAlpha=Math.pow(1-p,1.5);
       if(reducedMotion){ellipse(x,y,5,5,firework.color);continue}
       for(let j=0;j<48;j++){
