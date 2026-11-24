@@ -38,7 +38,7 @@ document.addEventListener('fullscreenchange',()=>{$('fullscreen').textContent=do
 refresh();
 
 // Bundled background music; starts only after a user gesture.
-const backgroundTrack=new Audio('./music/background.mp3');
+const backgroundTrack=new Audio('./music/background.mp3?v=20261124');
 backgroundTrack.loop=true;backgroundTrack.volume=.45;backgroundTrack.preload='none';
 function updateMusicButton(){
   $('music').textContent=backgroundTrack.paused?'♫ เปิดเพลง':'♫ ปิดเพลง';
