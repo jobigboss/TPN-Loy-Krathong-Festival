@@ -32,7 +32,7 @@ const server=http.createServer(async(req,res)=>{
   limits.set(ip,now);floats.push(item);if(floats.length>80)floats.shift();broadcast('float',item);return reply(201,item);
   }catch{return reply(400,{error:'ข้อมูลไม่ถูกต้อง'})}
  }
- if(req.method==='GET'&&['/','/app.js','/style.css'].includes(url.pathname)){const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.writeHead(200,{'Content-Type':({'index.html':'text/html','app.js':'text/javascript','style.css':'text/css'})[file]+'; charset=utf-8','Content-Security-Policy':"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; media-src 'self' blob:; frame-ancestors 'none'"});return res.end(fs.readFileSync(path.join(__dirname,'public',file)))}
+ if(req.method==='GET'&&['/','/app.js','/config.js','/transport.js','/style.css'].includes(url.pathname)){const file=url.pathname==='/'?'index.html':url.pathname.slice(1);res.writeHead(200,{'Content-Type':({'index.html':'text/html','app.js':'text/javascript','config.js':'text/javascript','transport.js':'text/javascript','style.css':'text/css'})[file]+'; charset=utf-8','Content-Security-Policy':"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self' https://*.supabase.co; img-src 'self' data:; media-src 'self' blob:; frame-ancestors 'none'"});return res.end(fs.readFileSync(path.join(__dirname,'public',file)))}
  res.writeHead(404).end('Not found');
 });
 setInterval(()=>{for(const c of clients)c.write(': heartbeat\n\n');for(const [ip,t] of limits)if(Date.now()-t>60000)limits.delete(ip)},15000).unref();

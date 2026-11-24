@@ -2,20 +2,23 @@
 
 Real-time multiplayer prototype. Node.js 20+; no external dependencies.
 
-## Shared online event (Render)
+## Free shared online event (GitHub Pages + Supabase)
 
-[Deploy the shared festival on Render](https://render.com/deploy?repo=https://github.com/jobigboss/TPN-Loy-Krathong-Festival)
+1. Create a project at https://supabase.com/dashboard using the **Free** plan. Wait for it to become ready.
+2. In SQL Editor, run the entire contents of [supabase/setup.sql](supabase/setup.sql).
+3. Get the Project URL and Publishable key (or legacy anon key) from the project's Connect/API settings.
+4. Set supabaseUrl and supabaseKey in [public/config.js](public/config.js), then commit and push. These are public browser values. Never use secret or service_role keys.
+5. On GitHub, open Settings > Pages > Build and deployment > Source and select **GitHub Actions**.
+6. Open Actions > Publish festival to GitHub Pages and run the workflow, or push a commit to main.
+7. Open https://jobigboss.github.io/TPN-Loy-Krathong-Festival/ on two devices and submit a wish. Both should show it within about five seconds. Refresh both to verify database persistence.
 
-The included `render.yaml` runs the frontend and Node.js backend on the same URL, with one instance and a 1 GB persistent disk mounted at `/var/data`. All visitors on that URL receive the same live wishes. This configuration uses a paid Starter web service and disk; review Render's displayed charges before deploying. No service is created by committing this file.
+All participants use the same Supabase table; no browser-only wish storage. The river shows the latest 80 entries and the database retains all wishes. Polling pauses to 30-second intervals in hidden tabs. The cloud version does not report an online visitor count. Local wishes are not automatically migrated.
 
-1. Open the deployment link and connect your GitHub account to Render.
-2. Review the Blueprint, service plan, and persistent disk, then deploy.
-3. Wait until the service is live and open its actual `https://…onrender.com` URL.
-4. Share that URL with participants; use `/?display=1` for the event screen.
+The SQL allows public reading of wishes and validated submissions through a restricted function, with a basic two-second device cooldown. Clients cannot directly update/delete rows. Device IDs can be replaced, so the cooldown is basic spam resistance rather than strong abuse protection. Manage/delete entries using the Supabase dashboard. Do not enter private information in public wishes.
 
-GitHub Pages remains a documentation page; the shared game runs at the Render URL. Existing local wishes are not automatically uploaded. To migrate them, privately copy `data/wishes.json` to `/var/data/wishes.json` while the hosted application is stopped, then restart it. Keep a separate backup. Verify with two devices that a new wish appears on both, and restart the service to confirm persistence before the event.
+Free usage is subject to Supabase/GitHub quotas; Supabase Free projects may pause after inactivity. Check the project is active before the event. No paid plan or Render service is needed. Until config.js is filled in, GitHub Pages shows the game with a database setup status and disables submission.
 
-References: [Render Blueprints](https://render.com/docs/blueprint-spec), [persistent disks](https://render.com/docs/disks).
+References: https://supabase.com/pricing and https://supabase.com/docs/guides/api
 
 ## Run
 Extract ZIP, open a terminal in the loy-krathong folder, run `npm start`, then visit http://localhost:3000. For phones on the same LAN, use http://<server-LAN-IP>:3000 and allow inbound TCP 3000 on a trusted private network only. Do not disable the firewall. For internet deployment use HTTPS and a reverse proxy configured for unbuffered SSE.
