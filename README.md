@@ -47,4 +47,4 @@ $env:PORT='3001'
 npm.cmd start
 ```
 
-Place the background song at `public/music/background.mp3`. The music button plays this bundled file on a loop at 45% volume. Commit the song with the source to include it in deployment. Playback starts after clicking the music button.
+Place the background song at `public/music/background.mp3`. The bundled music loops at 12% volume and attempts to start automatically. If the browser blocks autoplay, the first tap or keypress starts it. The music button can pause or resume playback. Commit the song with the source to include it in deployment. Music pauses when the page is hidden and resumes on return unless manually paused.

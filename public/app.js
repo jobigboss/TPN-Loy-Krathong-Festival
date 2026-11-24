@@ -37,23 +37,37 @@ $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await docume
 document.addEventListener('fullscreenchange',()=>{$('fullscreen').textContent=document.fullscreenElement?'ออกจากเต็มหน้าจอ':'เต็มหน้าจอ'});
 refresh();
 
-// Bundled background music; starts only after a user gesture.
+// Start softly on entry, with a first-interaction fallback for autoplay policies.
 const backgroundTrack=new Audio('./music/background.mp3?v=20261124');
-backgroundTrack.loop=true;backgroundTrack.volume=.45;backgroundTrack.preload='none';
+backgroundTrack.loop=true;backgroundTrack.volume=.12;backgroundTrack.preload='metadata';
+let musicManuallyPaused=false,musicStarting=false;
+async function startBackgroundMusic(){
+  if(musicManuallyPaused||musicStarting||document.hidden||!backgroundTrack.paused)return;
+  musicStarting=true;
+  try{await backgroundTrack.play()}catch{/* Retry after the next user interaction. */}
+  finally{musicStarting=false;updateMusicButton()}
+}
+function startMusicOnInteraction(event){
+  if(event.target.closest?.('#music'))return;
+  void startBackgroundMusic();
+}
+document.addEventListener('pointerdown',startMusicOnInteraction);
+document.addEventListener('keydown',startMusicOnInteraction);
 function updateMusicButton(){
   $('music').textContent=backgroundTrack.paused?'♫ เปิดเพลง':'♫ ปิดเพลง';
   $('music').setAttribute('aria-pressed',String(!backgroundTrack.paused));
 }
 $('music').onclick=async()=>{
   const button=$('music');button.disabled=true;
-  try{if(backgroundTrack.paused)await backgroundTrack.play();else backgroundTrack.pause()}
+  try{if(backgroundTrack.paused){musicManuallyPaused=false;await backgroundTrack.play()}else{musicManuallyPaused=true;backgroundTrack.pause()}}
   catch{$('notice').textContent='ยังไม่สามารถเล่นเพลงพื้นหลังได้'}
   finally{updateMusicButton();button.disabled=false}
 };
 backgroundTrack.addEventListener('pause',updateMusicButton);
 backgroundTrack.addEventListener('play',updateMusicButton);
 backgroundTrack.addEventListener('error',()=>{backgroundTrack.pause();updateMusicButton()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden)backgroundTrack.pause()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)backgroundTrack.pause();else void startBackgroundMusic()});
+void startBackgroundMusic();
 
 // A bounded firework show follows each live submission, synchronized with audio.
 const fireworks=[];
