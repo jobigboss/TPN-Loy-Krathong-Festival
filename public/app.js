@@ -10,7 +10,7 @@ const transport=createFestivalTransport({
   connection(connected,label){online=connected;connectionLabel=label||'';state()},
   count(value){if(value===null){$('connection').parentElement.replaceChildren($('connection'))}else $('count').textContent=value}
 });
-document.querySelectorAll('[data-style]').forEach(b=>b.onclick=()=>{style=b.dataset.style;document.querySelectorAll('[data-style]').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))});$('form').onsubmit=async e=>{e.preventDefault();if(busy||!online)return;busy=true;state();$('launch').textContent='กำลังลอยกระทง…';try{await transport.submit({name:$('name').value,wish:$('wish').value,style});$('message').textContent='กระทงของคุณลอยแล้ว ✨';$('wish').value='';$('wish-length').textContent='0/100';}catch(e){$('message').textContent=e.message||'ไม่สามารถลอยกระทงได้'}finally{busy=false;state();$('launch').textContent='ลอยกระทง'}};canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const p=[...positions].reverse().find(p=>Math.abs(x-p.x)<35*p.k&&Math.abs(y-p.y+10)<32*p.k);$('notice').textContent=p?p.item.name+' · '+(p.item.wish||'สุขสันต์วันลอยกระทง'):''});
+document.querySelectorAll('[data-style]').forEach(b=>b.onclick=()=>{style=b.dataset.style;document.querySelectorAll('[data-style]').forEach(c=>c.setAttribute('aria-pressed',String(c===b)))});$('form').onsubmit=async e=>{e.preventDefault();if(busy||!online)return;busy=true;const effectsReady=enableFireworkAudio().catch(()=>false);state();$('launch').textContent='กำลังลอยกระทง…';try{await transport.submit({name:$('name').value,wish:$('wish').value,style});await effectsReady;stopFireworkAudio();launchFireworks();$('message').textContent='กระทงของคุณลอยแล้ว ✨';$('wish').value='';$('wish-length').textContent='0/100';}catch(e){$('message').textContent=e.message||'ไม่สามารถลอยกระทงได้'}finally{busy=false;state();$('launch').textContent='ลอยกระทง'}};canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const p=[...positions].reverse().find(p=>Math.abs(x-p.x)<35*p.k&&Math.abs(y-p.y+10)<32*p.k);$('notice').textContent=p?p.item.name+' · '+(p.item.wish||'สุขสันต์วันลอยกระทง'):''});
 
 if(new URLSearchParams(location.search).get("display")==="1"){document.body.classList.add("display-mode");$("form").inert=true;}
 
@@ -88,13 +88,29 @@ function stopFireworkAudio(){
   if(effectsSource){effectsSource.stop();effectsSource=null}
   fireworks.length=0;
 }
+async function enableFireworkAudio(){
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio)return false;
+  effectsAudio??=new Audio();
+  // Resume directly in the submit gesture, before network requests finish.
+  await effectsAudio.resume();
+  try{await loadFireworkAudio()}
+  catch{
+    // Keep the celebration audible if the MP3 is temporarily unavailable.
+    effectsBuffer=effectsAudio.createBuffer(1,effectsAudio.sampleRate, effectsAudio.sampleRate);
+    const samples=effectsBuffer.getChannelData(0);
+    for(let i=0;i<samples.length;i++)samples[i]=(Math.random()*2-1)*Math.exp(-i/effectsAudio.sampleRate*8)*Math.min(1,i/100);
+    effectsPeaks=[{time:0,strength:1}];
+  }
+  effectsEnabled=true;effectsButton.textContent='ปิดเสียงพลุ';effectsButton.setAttribute('aria-pressed','true');
+  return true;
+}
 effectsButton.onclick=async()=>{
   effectsButton.disabled=true;
   try{
     if(!effectsEnabled){
-      const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)throw Error('unsupported');
-      effectsAudio??=new Audio();await effectsAudio.resume();await loadFireworkAudio();effectsEnabled=true;
-      effectsButton.textContent='ปิดเสียงพลุ';effectsButton.setAttribute('aria-pressed','true');launchFireworks();
+      if(!await enableFireworkAudio())throw Error('unsupported');
+      launchFireworks();
     }else{effectsEnabled=false;stopFireworkAudio();effectsButton.textContent='เปิดเสียงพลุ';effectsButton.setAttribute('aria-pressed','false')}
   }catch{$('notice').textContent='เปิดเสียงพลุไม่ได้ กรุณาลองอีกครั้ง'}finally{effectsButton.disabled=false}
 };
