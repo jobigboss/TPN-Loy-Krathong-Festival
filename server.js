@@ -8,6 +8,9 @@ function count(){broadcast('count',clients.size)}
 const server=http.createServer(async(req,res)=>{
  const url=new URL(req.url,'http://localhost');
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
+ if(req.method==='GET'&&url.pathname==='/health'){
+  res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'}).end(JSON.stringify({status:'ok'}));return;
+ }
  if(req.method==='GET'&&url.pathname==='/music/background.mp3'){
   const file=path.join(__dirname,'public','music','background.mp3');
   if(!fs.existsSync(file)){res.writeHead(404).end('Music file not added');return}

@@ -2,6 +2,21 @@
 
 Real-time multiplayer prototype. Node.js 20+; no external dependencies.
 
+## Shared online event (Render)
+
+[Deploy the shared festival on Render](https://render.com/deploy?repo=https://github.com/jobigboss/TPN-Loy-Krathong-Festival)
+
+The included `render.yaml` runs the frontend and Node.js backend on the same URL, with one instance and a 1 GB persistent disk mounted at `/var/data`. All visitors on that URL receive the same live wishes. This configuration uses a paid Starter web service and disk; review Render's displayed charges before deploying. No service is created by committing this file.
+
+1. Open the deployment link and connect your GitHub account to Render.
+2. Review the Blueprint, service plan, and persistent disk, then deploy.
+3. Wait until the service is live and open its actual `https://…onrender.com` URL.
+4. Share that URL with participants; use `/?display=1` for the event screen.
+
+GitHub Pages remains a documentation page; the shared game runs at the Render URL. Existing local wishes are not automatically uploaded. To migrate them, privately copy `data/wishes.json` to `/var/data/wishes.json` while the hosted application is stopped, then restart it. Keep a separate backup. Verify with two devices that a new wish appears on both, and restart the service to confirm persistence before the event.
+
+References: [Render Blueprints](https://render.com/docs/blueprint-spec), [persistent disks](https://render.com/docs/disks).
+
 ## Run
 Extract ZIP, open a terminal in the loy-krathong folder, run `npm start`, then visit http://localhost:3000. For phones on the same LAN, use http://<server-LAN-IP>:3000 and allow inbound TCP 3000 on a trusted private network only. Do not disable the firewall. For internet deployment use HTTPS and a reverse proxy configured for unbuffered SSE.
 
